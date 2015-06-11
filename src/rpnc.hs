@@ -48,7 +48,7 @@ data Token = PlusToken
            | PercentToken 
            | CaretToken 
            | LeftParenToken 
-           | RightParentToken 
+           | RightParenToken 
            | MinToken 
            | MaxToken
            | EOSToken
@@ -67,22 +67,24 @@ readNumber (c:cs) lexeme
     | not $ isDigit c                            = (NumberToken lexeme, Just (c:cs))
     | otherwise                                  = error $ lexeme ++ ":  malformed number"
 
-_tokenize :: Maybe String -> [Token]
-_tokenize Nothing = [EOSToken]
-_tokenize (Just cs) = tokenize cs
-
 tokenize :: String -> [Token]
 tokenize [] = [EOSToken]
-tokenize ('-':cs) = MinusToken : tokenize(cs)
-tokenize ('+':cs) = PlusToken : tokenize(cs)
-tokenize ('*':cs) = StarToken : tokenize(cs)
-tokenize ('/':cs) = SlashToken : tokenize(cs)
-tokenize ('%':cs) = PercentToken : tokenize(cs)
-tokenize ('^':cs) = CaretToken : tokenize(cs)
-tokenize (c:cs)
+tokenize cs = tokenizeM $ Just cs
+
+tokenizeM :: Maybe String -> [Token]
+tokenizeM Nothing = [EOSToken]
+tokenizeM (Just ('-':cs)) = MinusToken : tokenize(cs)
+tokenizeM (Just ('+':cs)) = PlusToken : tokenize(cs)
+tokenizeM (Just ('*':cs)) = StarToken : tokenize(cs)
+tokenizeM (Just ('/':cs)) = SlashToken : tokenize(cs)
+tokenizeM (Just ('%':cs)) = PercentToken : tokenize(cs)
+tokenizeM (Just ('^':cs)) = CaretToken : tokenize(cs)
+tokenizeM (Just ('(':cs)) = LeftParenToken : tokenize(cs)
+tokenizeM (Just (')':cs)) = RightParenToken : tokenize(cs)
+tokenizeM (Just (c:cs))
     | isSpace c = tokenize cs
-    | isDigit c = (fst num) : _tokenize(snd num)
-    | otherwise = [SymbolToken [c]]
+    | isDigit c = (fst num) : tokenizeM(snd num)
+    | otherwise = SymbolToken [c] : tokenize cs
     where
         num = readNumber cs [c]
 
