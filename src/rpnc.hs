@@ -59,24 +59,32 @@ data Token = PlusToken
 readNumber :: String -> String -> (Token, Maybe String)
 readNumber [] lexeme 
     | (last lexeme) == '.' = error $ lexeme ++ ": MALFORMED NUMBER"
-    | otherwise            = (NumberToken lexeme, Just "")
+    | otherwise            = (NumberToken lexeme, Nothing)
 
 readNumber (c:cs) lexeme
     | isDigit c                                  = readNumber cs $ lexeme ++ (c:[])
     | c == '.' && (not $ "." `isInfixOf` lexeme) = readNumber cs $ lexeme ++ (c:[])
+    | not $ isDigit c                            = (NumberToken lexeme, Just (c:cs))
     | otherwise                                  = error $ lexeme ++ ":  malformed number"
 
-tokenize :: String -> (Token, Maybe String)
-tokenize ('-':cs) = (MinusToken, Just cs)
-tokenize ('+':cs) = (PlusToken, Just cs)
-tokenize ('*':cs) = (StarToken, Just cs)
-tokenize ('/':cs) = (SlashToken, Just cs)
-tokenize ('%':cs) = (PercentToken, Just cs)
-tokenize ('^':cs) = (CaretToken, Just cs)
+_tokenize :: Maybe String -> [Token]
+_tokenize Nothing = [EOSToken]
+_tokenize (Just cs) = tokenize cs
+
+tokenize :: String -> [Token]
+tokenize [] = [EOSToken]
+tokenize ('-':cs) = MinusToken : tokenize(cs)
+tokenize ('+':cs) = PlusToken : tokenize(cs)
+tokenize ('*':cs) = StarToken : tokenize(cs)
+tokenize ('/':cs) = SlashToken : tokenize(cs)
+tokenize ('%':cs) = PercentToken : tokenize(cs)
+tokenize ('^':cs) = CaretToken : tokenize(cs)
 tokenize (c:cs)
     | isSpace c = tokenize cs
-    | isDigit c = readNumber cs $ c:[]
-    | otherwise = (SymbolToken [c], Just cs)
+    | isDigit c = (fst num) : _tokenize(snd num)
+    | otherwise = [SymbolToken [c]]
+    where
+        num = readNumber cs [c]
 
 
 main = do
