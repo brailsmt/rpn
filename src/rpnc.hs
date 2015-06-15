@@ -54,7 +54,7 @@ data Token = PlusToken
            | EOSToken
            | SymbolToken String
            | NumberToken String
-             deriving Show
+             deriving (Show, Eq)
 
 isEndOfToken :: Char -> Bool
 isEndOfToken c = isSpace c || not (isAlphaNum c)
@@ -104,6 +104,38 @@ tokenizeM (Just (c:cs))
         num = readNumber cs [c]
         sym = readSymbol cs [c] 
 
+parse :: [Token] -> Maybe AST
+parse tokens = Nothing
+
+
+p0 :: [Token] -> (Maybe AST, Maybe [Token])
+p0 [] = (Nothing, Nothing)
+
+p1 :: [Token] -> (Maybe (AST -> AST), Maybe [Token])
+p1 [] = (Nothing, Nothing)
+        
+
+p2 :: [Token] -> (Maybe (AST -> AST), Maybe [Token])
+p2 [] = (Nothing, Nothing)
+
+p3 :: [Token] -> (Maybe (AST -> AST), Maybe [Token])
+p3 [] = (Nothing, Nothing)
+
+p4 :: [Token] -> (Maybe (AST -> AST), Maybe [Token])
+p4 [] = (Nothing, Nothing)
+
+p5 :: [Token] -> (Maybe (AST -> AST), Maybe [Token])
+p5 [] = (Nothing, Nothing)
+
+p6 :: [Token] -> (Maybe AST, Maybe [Token])
+p6 (SymbolToken (val):toks) = (Just $ SymbolAST val, Nothing)
+p6 (NumberToken (val):toks) = (Just $ SymbolAST val, Nothing)
+p6 (LeftParenToken:toks)
+    | firstTok == RightParenToken = (ast,p0toks)
+    | otherwise = error "Unbalanced parens"
+    where
+        (ast,p0toks) = p0 toks
+        firstTok = head $ fromJust p0toks
 
 main = do
     args <- getArgs
