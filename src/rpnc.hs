@@ -28,19 +28,7 @@ import Data.Maybe
 -- p6 ::= '(' <p0> ')'
 --    ::= <symbol>
 --    ::= <number>
-
-data AST = SymbolAST String
-         | NumberAST Float
-         | AddAST AST AST
-         | SubtractAST AST AST
-         | MultiplyAST AST AST
-         | DivideAST AST AST
-         | ModuloAST AST AST
-         | PowerAST AST AST
-         | MinAST AST AST
-         | MaxAST AST AST
-           deriving (Show)
-
+    
 data Token = PlusToken 
            | MinusToken 
            | StarToken 
@@ -56,6 +44,14 @@ data Token = PlusToken
            | NumberToken String
              deriving (Show, Eq)
 
+data Tree a = Leaf a 
+            | Branch (Maybe (Tree a)) (Maybe (Tree a))
+              deriving (Show)
+
+type AST = (Tree Token)
+
+
+
 isEndOfToken :: Char -> Bool
 isEndOfToken c = isSpace c || not (isAlphaNum c)
 
@@ -64,8 +60,8 @@ readNumber [] lexeme
     | (last lexeme) == '.' = error $ lexeme ++ ": MALFORMED NUMBER"
     | otherwise            = (NumberToken lexeme, Nothing)
 readNumber (c:cs) lexeme
-    | isDigit c                                  = readNumber cs $ lexeme ++ (c:[])
-    | c == '.' && (not $ "." `isInfixOf` lexeme) = readNumber cs $ lexeme ++ (c:[])
+    | isDigit c                                  = readNumber cs $ lexeme ++ [c]
+    | c == '.' && (not $ "." `isInfixOf` lexeme) = readNumber cs $ lexeme ++ [c]
     | not $ isDigit c                            = (NumberToken lexeme, Just (c:cs))
     | otherwise                                  = error $ lexeme ++ ":  malformed number"
 
@@ -78,7 +74,7 @@ readSymbol (c:cs) lexeme
     | lexeme == "min" && endtok = (MinToken, Just (c:cs))
     | lexeme == "max" && endtok = (MaxToken, Just (c:cs))
     | endtok                    = (SymbolToken lexeme, Just (c:cs))
-    | otherwise                 = readSymbol cs $ lexeme ++ (c:[])
+    | otherwise                 = readSymbol cs $ lexeme ++ [c]
     where   
         endtok = isEndOfToken c
 
@@ -104,40 +100,50 @@ tokenizeM (Just (c:cs))
         num = readNumber cs [c]
         sym = readSymbol cs [c] 
 
-parse :: [Token] -> Maybe AST
-parse tokens = Nothing
+parse :: [Token] -> AST
+parse tokens = fromJust $ fst $ p0 $ Just tokens
 
+p0 :: Maybe [Token] -> (Maybe AST, Maybe [Token])
+p0 Nothing = (Nothing, Nothing)
+p0 (Just []) = (Nothing, Nothing)
+p0 tokens = (Just (Branch l r), p1toks)
+    where
+        p2result = p2 tokens
+        p1result = p1 p2toks
+        l = fst p2result
+        r = fst p1result
+        p2toks = snd p2result
+        p1toks = snd p1result
 
-p0 :: [Token] -> (Maybe AST, Maybe [Token])
-p0 [] = (Nothing, Nothing)
-
-p1 :: [Token] -> (Maybe (AST -> AST), Maybe [Token])
-p1 [] = (Nothing, Nothing)
+p1 :: Maybe [Token] -> (Maybe AST, Maybe [Token])
+p1 Nothing = (Nothing, Nothing)
+p1 (Just ([])) = (Nothing, Nothing)
         
+p2 :: Maybe [Token] -> (Maybe AST, Maybe [Token])
+p2 Nothing = (Nothing, Nothing)
+p2 (Just ([])) = (Nothing, Nothing)
 
-p2 :: [Token] -> (Maybe (AST -> AST), Maybe [Token])
-p2 [] = (Nothing, Nothing)
-
-p3 :: [Token] -> (Maybe (AST -> AST), Maybe [Token])
-p3 [] = (Nothing, Nothing)
-
-p4 :: [Token] -> (Maybe (AST -> AST), Maybe [Token])
-p4 [] = (Nothing, Nothing)
-
-p5 :: [Token] -> (Maybe (AST -> AST), Maybe [Token])
-p5 [] = (Nothing, Nothing)
-
-p6 :: [Token] -> (Maybe AST, Maybe [Token])
-p6 (SymbolToken (val):toks) = (Just $ SymbolAST val, Nothing)
-p6 (NumberToken (val):toks) = (Just $ SymbolAST val, Nothing)
-p6 (LeftParenToken:toks)
+--p3 :: [Token] -> (Maybe (AST -> AST), Maybe [Token])
+--p3 [] = (Nothing, Nothing)
+--
+--p4 :: [Token] -> (Maybe (AST -> AST), Maybe [Token])
+--p4 [] = (Nothing, Nothing)
+--
+--p5 :: [Token] -> (Maybe (AST -> AST), Maybe [Token])
+--p5 [] = (Nothing, Nothing)
+--
+p6 :: Maybe [Token] -> (Maybe AST, Maybe [Token])
+p6 (Just (LeftParenToken:toks))
     | firstTok == RightParenToken = (ast,p0toks)
     | otherwise = error "Unbalanced parens"
     where
-        (ast,p0toks) = p0 toks
+        (ast,p0toks) = p0 $ Just toks
         firstTok = head $ fromJust p0toks
+p6 (Just ((SymbolToken (val)):toks)) = (Just $ Leaf $ SymbolToken val, Nothing)
+p6 (Just ((NumberToken (val)):toks)) = (Just $ Leaf $ NumberToken val, Nothing)
 
-main = do
-    args <- getArgs
-    --ast = compile args
-    putStrLn "asdf"
+--
+--main = do
+--    args <- getArgs
+--    --ast = compile args
+--    putStrLn "asdf"
